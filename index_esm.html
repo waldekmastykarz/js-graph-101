@@ -1,0 +1,79 @@
+<html>
+<head>
+  <script type="importmap">
+    {
+      "imports": {
+        "tslib": "https://unpkg.com/tslib/tslib.es6.js",
+        "@azure/msal-common": "https://unpkg.com/@azure/msal-common/dist/index.js",
+        "@azure/msal-browser": "https://unpkg.com/@azure/msal-browser/dist/index.js",
+        "@microsoft/microsoft-graph-client": "https://unpkg.com/@microsoft/microsoft-graph-client/lib/es/src/index.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="auth"></div>
+  <pre></pre>
+  <script type="module">
+    import { PublicClientApplication, InteractionType } from '@azure/msal-browser';
+    import { Client } from '@microsoft/microsoft-graph-client';
+    import { AuthCodeMSALBrowserAuthenticationProvider } from 'https://unpkg.com/@microsoft/microsoft-graph-client/lib/es/src/authentication/msal-browser/AuthCodeMSALBrowserAuthenticationProvider.js';
+
+    const msalConfig = {
+      auth: {
+        clientId: '5cc6311f-110a-4395-b494-948beaa58054'
+      }
+    };
+    const msalClient = new PublicClientApplication(msalConfig);
+    let graphClient = null;
+
+    function render() {
+      const accounts = msalClient.getAllAccounts();
+
+      if (accounts.length === 0) {
+        document.querySelector('#auth').innerHTML = '<a href="#">Login</a>';
+        document.querySelector('#auth a').addEventListener('click', login);
+      }
+      else {
+        document.querySelector('#auth').innerHTML = '<a href="#">Logout</a>';
+        document.querySelector('#auth a').addEventListener('click', logout);
+        graphClient = getGraphClient(accounts[0]);
+        callGraph();
+      }
+    }
+
+    function login(e) {
+      e.preventDefault();
+      msalClient
+        .loginPopup()
+        .then(response => render());
+    }
+
+    function logout(e) {
+      e.preventDefault();
+      msalClient.logout();
+    }
+
+    function getGraphClient(account) {
+      const authProvider = new AuthCodeMSALBrowserAuthenticationProvider(msalClient, {
+        account,
+        scopes: ['user.read'],
+        interactionType: InteractionType.Popup,
+      });
+
+      return Client.initWithMiddleware({ authProvider });
+    }
+
+    function callGraph() {
+      graphClient
+        .api('/me')
+        .get()
+        .then(res => {
+          document.querySelector('pre').innerHTML = JSON.stringify(res, null, 2);
+        });
+    }
+
+    render();
+  </script>
+</body>
+</html>
