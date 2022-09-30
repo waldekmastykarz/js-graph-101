@@ -29,43 +29,46 @@
     let graphClient = null;
 
     function render() {
-      const accounts = msalClient.getAllAccounts();
+      msalClient
+        .handleRedirectPromise()
+        .then(response => {
+          const accounts = msalClient.getAllAccounts();
 
-      if (accounts.length === 0) {
-        document.querySelector('#auth').innerHTML = '<a href="#">Login</a>';
-        document.querySelector('#auth a').addEventListener('click', login);
-      }
-      else {
-        document.querySelector('#auth').innerHTML = '<a href="#">Logout</a>';
-        document.querySelector('#auth a').addEventListener('click', logout);
-        graphClient = getGraphClient(accounts[0]);
-        callGraph();
-      }
+          if (accounts.length === 0) {
+            document.querySelector('#auth').innerHTML = '<button>Login</button>';
+            document.querySelector('#auth button').addEventListener('click', login);
+            document.querySelector('pre').innerHTML = '';
+          }
+          else {
+            document.querySelector('#auth').innerHTML = '<button>Logout</button>';
+            document.querySelector('#auth button').addEventListener('click', logout);
+            graphClient = getGraphClient(accounts[0]);
+            loadUserProfile();
+          }
+        });
     }
 
     function login(e) {
       e.preventDefault();
-      msalClient
-        .loginPopup()
-        .then(response => render());
+      msalClient.loginRedirect();
     }
 
     function logout(e) {
       e.preventDefault();
-      msalClient.logout();
+      msalClient.logoutRedirect();
     }
 
     function getGraphClient(account) {
       const authProvider = new AuthCodeMSALBrowserAuthenticationProvider(msalClient, {
         account,
         scopes: ['user.read'],
-        interactionType: InteractionType.Popup,
+        interactionType: InteractionType.Redirect,
       });
 
       return Client.initWithMiddleware({ authProvider });
     }
 
-    function callGraph() {
+    function loadUserProfile() {
       graphClient
         .api('/me')
         .get()
@@ -77,4 +80,5 @@
     render();
   </script>
 </body>
+
 </html>

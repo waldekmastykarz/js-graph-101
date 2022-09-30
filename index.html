@@ -1,5 +1,4 @@
 <html>
-
 <head>
   <script src="https://alcdn.msauth.net/browser/2.28.3/js/msal-browser.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@microsoft/microsoft-graph-client/lib/graph-js-sdk.js"></script>
@@ -7,7 +6,6 @@
     src="https://cdn.jsdelivr.net/npm/@microsoft/microsoft-graph-client/lib/graph-client-msalBrowserAuthProvider.js"></script>
   <script src="./env.js"></script>
 </head>
-
 <body>
   <div id="auth"></div>
   <pre></pre>
@@ -21,43 +19,46 @@
       const msalClient = new msal.PublicClientApplication(msalConfig);
 
       function render() {
-        const accounts = msalClient.getAllAccounts();
+        msalClient
+          .handleRedirectPromise()
+          .then(response => {
+            const accounts = msalClient.getAllAccounts();
 
-        if (accounts.length === 0) {
-          document.querySelector('#auth').innerHTML = '<a href="#">Login</a>';
-          document.querySelector('#auth a').addEventListener('click', login);
-        }
-        else {
-          document.querySelector('#auth').innerHTML = '<a href="#">Logout</a>';
-          document.querySelector('#auth a').addEventListener('click', logout);
-          const graphClient = getGraphClient(accounts[0]);
-          callGraph(graphClient);
-        }
+            if (accounts.length === 0) {
+              document.querySelector('#auth').innerHTML = '<button>Login</button>';
+              document.querySelector('#auth button').addEventListener('click', login);
+              document.querySelector('pre').innerHTML = '';
+            }
+            else {
+              document.querySelector('#auth').innerHTML = '<button>Logout</button>';
+              document.querySelector('#auth button').addEventListener('click', logout);
+              const graphClient = getGraphClient(accounts[0]);
+              loadUserProfile(graphClient);
+            }
+          });
       }
 
       function login(e) {
         e.preventDefault();
-        msalClient
-          .loginPopup()
-          .then(response => render());
+        msalClient.loginRedirect();
       }
 
       function logout(e) {
         e.preventDefault();
-        msalClient.logout();
+        msalClient.logoutRedirect();
       }
 
       function getGraphClient(account) {
         const authProvider = new MSGraphAuthCodeMSALBrowserAuthProvider.AuthCodeMSALBrowserAuthenticationProvider(msalClient, {
           account,
           scopes: ['user.read'],
-          interactionType: msal.InteractionType.Popup,
+          interactionType: msal.InteractionType.Redirect,
         });
 
         return MicrosoftGraph.Client.initWithMiddleware({ authProvider });
       }
 
-      function callGraph(graphClient) {
+      function loadUserProfile(graphClient) {
         graphClient
           .api('/me')
           .get()
@@ -67,8 +68,7 @@
       }
 
       render();
-    })()
+    })();
   </script>
 </body>
-
 </html>
